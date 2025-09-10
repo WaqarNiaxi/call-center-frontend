@@ -55,6 +55,17 @@ interface FormData {
   status?: PaymentStatus;
 }
 
+// 🔹 Redux user state type
+interface UserState {
+  id: string;
+  token: string;
+  role: 'super_admin' | 'sub_admin' | 'center_admin' | 'agent' | string;
+}
+
+interface RootState {
+  user: UserState;
+}
+
 export default function PaymentSalesPage() {
   const [payments, setPayments] = useState<SalePayment[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
@@ -67,8 +78,10 @@ export default function PaymentSalesPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
-  // Redux user
-  const { id: userId, token, role } = useSelector((state: any) => state.user);
+  // Redux user (⚡️ removed any)
+  const { id: userId, token, role } = useSelector(
+    (state: RootState) => state.user
+  );
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -84,6 +97,7 @@ export default function PaymentSalesPage() {
     if (!token) return;
     fetchPayments();
     fetchSales();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, statusFilter, fromDate, toDate]);
 
   // re-calc available sales whenever sales/payments update
@@ -157,18 +171,6 @@ export default function PaymentSalesPage() {
     setShowForm(true);
   };
 
-  const handleDelete = async (paymentId: string) => {
-    if (!paymentId) return;
-    try {
-      await axios.delete(`${API_BASE}/sale-payments/${paymentId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await fetchPayments();
-    } catch (err) {
-      console.error('Error deleting payment', err);
-    }
-  };
-
   return (
     <div className="max-w-6xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Sale Payments</h1>
@@ -230,9 +232,9 @@ export default function PaymentSalesPage() {
             <th className="border px-3 py-2">Status</th>
             <th className="border px-3 py-2">Created At</th>
             <th className="border px-3 py-2">Payable On</th>
-                {role !== 'center_admin' &&
-            <th className="border px-3 py-2">Actions</th>
-                }
+            {role !== 'center_admin' && (
+              <th className="border px-3 py-2">Actions</th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -259,22 +261,21 @@ export default function PaymentSalesPage() {
                 <td className="border px-3 py-2">
                   {new Date(p.createdAt).toLocaleString()}
                 </td>
-                
                 <td className="border px-3 py-2">
                   {new Date(p.payableOn).toLocaleString()}
                 </td>
-                {role !== 'center_admin' &&
-                <td className="border px-3 py-2 space-x-2">
-                  {(role === 'super_admin' || role === 'sub_admin') && (
-                    <button
-                      onClick={() => handleEdit(p)}
-                      className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
-                    >
-                      Edit
-                    </button>
-                  )}
-                </td>
-}
+                {role !== 'center_admin' && (
+                  <td className="border px-3 py-2 space-x-2">
+                    {(role === 'super_admin' || role === 'sub_admin') && (
+                      <button
+                        onClick={() => handleEdit(p)}
+                        className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))
           ) : (

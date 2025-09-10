@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 
-const statuses = ['pending', 'approved', 'declined', 'refunded'];
+const statuses = ['pending', 'approved', 'declined', 'refunded'] as const;
 
 interface Merchant {
   _id: string;
@@ -34,6 +34,12 @@ interface FormData {
   status: string;
 }
 
+interface UserState {
+  id: string;
+  token: string;
+  role: 'admin' | 'center_admin' | 'agent';
+}
+
 export default function SalesPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [merchants, setMerchants] = useState<Merchant[]>([]);
@@ -42,8 +48,10 @@ export default function SalesPage() {
   const [address, setAddress] = useState('');
   const addressInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Redux user
-  const { id: userId, token, role } = useSelector((state: any) => state.user);
+  // ✅ Strongly type Redux state
+  const { id: userId, token, role } = useSelector(
+    (state: { user: UserState }) => state.user
+  );
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -58,16 +66,16 @@ export default function SalesPage() {
   // Fetch sales & merchants
   useEffect(() => {
     if (!token) return;
-    fetchSales();
-    fetchMerchants();
+    void fetchSales();
+    void fetchMerchants();
   }, [token]);
 
   const fetchSales = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/sales`, {
+      const res = await axios.get<{ salesData: Sale[] }>(`${API_BASE}/sales`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setSales(res.data?.salesData);
+      setSales(res.data?.salesData || []);
     } catch (err) {
       console.error('Error fetching sales', err);
     }
@@ -75,7 +83,7 @@ export default function SalesPage() {
 
   const fetchMerchants = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/merchants`, {
+      const res = await axios.get<Merchant[]>(`${API_BASE}/merchants`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMerchants(res.data);
@@ -86,12 +94,12 @@ export default function SalesPage() {
 
   // Google Places Autocomplete
   useEffect(() => {
-    if (!(window as any).google || !addressInputRef.current) return;
+    const g = (window as unknown as { google?: typeof google }).google;
+    if (!g || !addressInputRef.current) return;
 
-    const autocomplete = new (window as any).google.maps.places.Autocomplete(
-      addressInputRef.current,
-      { types: ['address'] }
-    );
+    const autocomplete = new g.maps.places.Autocomplete(addressInputRef.current, {
+      types: ['address'],
+    });
 
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
@@ -104,14 +112,14 @@ export default function SalesPage() {
 
   // Luhn algorithm
   const luhnCheck = (num: string) => {
-    let arr = num
+    const arr = num
       .replace(/\D/g, '')
       .split('')
       .reverse()
       .map((x) => parseInt(x, 10));
     if (arr.length === 0) return false;
-    let lastDigit = arr.shift()!;
-    let sum = arr.reduce(
+    const lastDigit = arr.shift()!;
+    const sum = arr.reduce(
       (acc, val, i) => acc + (i % 2 === 0 ? ((val *= 2) > 9 ? val - 9 : val) : val),
       0
     );
@@ -120,19 +128,18 @@ export default function SalesPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      let payload: any = {
+      // ✅ payload type
+      const payload: Partial<FormData> & { submittedBy?: string } = {
         ...data,
-        merchant: data.merchant, // merchant id
+        merchant: data.merchant,
       };
 
       if (editingSale) {
-        // remove submittedBy if leaked
         delete payload.submittedBy;
         await axios.put(`${API_BASE}/sales/${editingSale._id}`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } else {
-        // Create: add submittedBy
         payload.submittedBy = userId;
         await axios.post(`${API_BASE}/sales`, payload, {
           headers: { Authorization: `Bearer ${token}` },
@@ -180,20 +187,21 @@ export default function SalesPage() {
     <div className="max-w-5xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Sales List</h1>
 
+      {role === 'agent' && (
+        <button
+          onClick={() => {
+            reset();
+            setEditingSale(null);
+            setAddress('');
+            setShowForm(true);
+          }}
+          className="mb-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+        >
+          Create New Sale
+        </button>
+      )}
 
-{role === 'agent' &&
-      <button
-        onClick={() => {
-          reset();
-          setEditingSale(null);
-          setAddress('');
-          setShowForm(true);
-        }}
-        className="mb-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-      >
-        Create New Sale
-      </button>
-}
+      {/* table */}
       <table className="w-full border">
         <thead className="bg-gray-100">
           <tr>
@@ -218,10 +226,12 @@ export default function SalesPage() {
                   <button
                     onClick={() => handleEdit(sale)}
                     disabled={
-                      (role === 'center_admin' || role === 'agent') && sale.status !== 'pending'
+                      (role === 'center_admin' || role === 'agent') &&
+                      sale.status !== 'pending'
                     }
                     className={`bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 ${
-                      (role === 'center_admin' || role === 'agent') && sale.status !== 'pending'
+                      (role === 'center_admin' || role === 'agent') &&
+                      sale.status !== 'pending'
                         ? 'cursor-not-allowed'
                         : ''
                     }`}
@@ -231,10 +241,12 @@ export default function SalesPage() {
                   <button
                     onClick={() => handleDelete(sale._id)}
                     disabled={
-                      (role === 'center_admin' || role === 'agent') && sale.status !== 'pending'
+                      (role === 'center_admin' || role === 'agent') &&
+                      sale.status !== 'pending'
                     }
                     className={`bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 ${
-                      (role === 'center_admin' || role === 'agent') && sale.status !== 'pending'
+                      (role === 'center_admin' || role === 'agent') &&
+                      sale.status !== 'pending'
                         ? 'cursor-not-allowed'
                         : ''
                     }`}
@@ -254,6 +266,7 @@ export default function SalesPage() {
         </tbody>
       </table>
 
+      {/* modal */}
       {showForm && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white rounded-lg p-6 max-w-lg w-full relative max-h-[80%] overflow-auto">
@@ -280,7 +293,7 @@ export default function SalesPage() {
                       luhnCheck(val.replace(/\s/g, '')) || 'Invalid card number',
                   })}
                   placeholder="4111 1111 1111 1111"
-                  disabled={!!editingSale} // disable in edit mode
+                  disabled={!!editingSale}
                 />
                 {errors.cardNumber && (
                   <p className="text-red-500 text-sm">{errors.cardNumber.message}</p>
@@ -301,7 +314,7 @@ export default function SalesPage() {
                     },
                   })}
                   placeholder="12/27"
-                  disabled={!!editingSale} // disable in edit mode
+                  disabled={!!editingSale}
                 />
                 {errors.expiryDate && (
                   <p className="text-red-500 text-sm">{errors.expiryDate.message}</p>
@@ -322,7 +335,7 @@ export default function SalesPage() {
                     },
                   })}
                   placeholder="123"
-                  disabled={!!editingSale} // disable in edit mode
+                  disabled={!!editingSale}
                 />
                 {errors.cvv && <p className="text-red-500 text-sm">{errors.cvv.message}</p>}
               </div>
@@ -387,9 +400,7 @@ export default function SalesPage() {
               </div>
 
               {/* Status */}
-              {role === 'center_admin' || role === 'agent' ? (
-                <></>
-              ) : (
+              {role === 'center_admin' || role === 'agent' ? null : (
                 <div>
                   <label className="block font-medium mb-1">Status</label>
                   <select

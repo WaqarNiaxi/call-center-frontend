@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+
 import React, { useState, useEffect } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { useAppSelector, useAppDispatch } from '@/hooks/useTypedHooks'; // typed hooks
@@ -24,9 +24,7 @@ export default function UserDropdown() {
   const userName = user?.role || "User";
   const userEmail = user?.email || "user@example.com";
 
-  // Replace with dynamic data if needed
-  const userImage = null; // or actual path like "/images/user/owner.jpg"
-  const defaultAvatar = "/images/user/avatar.png";
+
 
   function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
     e.stopPropagation();

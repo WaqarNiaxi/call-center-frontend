@@ -30,17 +30,22 @@ export default function SignInPage() {
 
       dispatch(
         setUser({
-          id:user.id,
+          id: user.id,
           email: user.email,
-          token:access_token,
+          token: access_token,
           role: user.role,
           center: user.center || null,
         })
       );
 
       router.replace('/');
-    } catch (err: any) {
-      alert(err?.response?.data?.message || 'Login failed');
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const error = err as { response?: { data?: { message?: string } } };
+        alert(error.response?.data?.message || 'Login failed');
+      } else {
+        alert('Login failed');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -49,7 +54,7 @@ export default function SignInPage() {
   return (
     <div className="flex h-screen">
       {/* Left Side: Form */}
-      <div className="w-full  flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-6">
+      <div className="w-full flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-6">
         <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-md p-8">
           <div className="mb-6 text-center">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Sign In</h2>
@@ -87,8 +92,6 @@ export default function SignInPage() {
           </form>
         </div>
       </div>
-
-     
     </div>
   );
 }

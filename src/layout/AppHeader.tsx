@@ -1,6 +1,5 @@
 "use client";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
-import NotificationDropdown from "@/components/header/NotificationDropdown";
 import UserDropdown from "@/components/header/UserDropdown";
 import { useSidebar } from "@/context/SidebarContext";
 import Image from "next/image";
@@ -8,7 +7,7 @@ import Link from "next/link";
 import React, { useState ,useEffect,useRef} from "react";
 
 const AppHeader: React.FC = () => {
-  const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
+  const [isApplicationMenuOpen] = useState(false);
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
 
@@ -20,9 +19,9 @@ const AppHeader: React.FC = () => {
     }
   };
 
-  const toggleApplicationMenu = () => {
-    setApplicationMenuOpen(!isApplicationMenuOpen);
-  };
+  // const toggleApplicationMenu = () => {
+  //   setApplicationMenuOpen(!isApplicationMenuOpen);
+  // };
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

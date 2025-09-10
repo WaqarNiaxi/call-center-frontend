@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
@@ -28,44 +28,53 @@ interface FormData {
   clearingDays: number;
 }
 
+// Redux user state type
+interface RootState {
+  user: {
+    token: string;
+  };
+}
+
 export default function CommissionPage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [centers, setCenters] = useState<CenterAdmin[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingCommission, setEditingCommission] = useState<Commission | null>(null);
 
-  const { token } = useSelector((state: any) => state.user);
+  const { token } = useSelector((state: RootState) => state.user);
   const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>();
+
+  const fetchCommissions = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get<Commission[]>(`${API_BASE}/commission-settings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCommissions(res.data);
+    } catch (err: unknown) {
+      console.error('Error fetching commissions', err);
+    }
+  }, [API_BASE, token]);
+
+  const fetchAvailableCenters = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get<CenterAdmin[]>(`${API_BASE}/commission-settings/available-centers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCenters(res.data);
+    } catch (err: unknown) {
+      console.error('Error fetching centers', err);
+    }
+  }, [API_BASE, token]);
 
   useEffect(() => {
     if (!token) return;
     fetchCommissions();
     fetchAvailableCenters();
-  }, [token]);
-
-  const fetchCommissions = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/commission-settings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCommissions(res.data);
-    } catch (err) {
-      console.error('Error fetching commissions', err);
-    }
-  };
-
-  const fetchAvailableCenters = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/commission-settings/available-centers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCenters(res.data);
-    } catch (err) {
-      console.error('Error fetching centers', err);
-    }
-  };
+  }, [token, fetchCommissions, fetchAvailableCenters]);
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -85,9 +94,11 @@ export default function CommissionPage() {
       setShowForm(false);
       setEditingCommission(null);
       reset();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving commission', err);
-      if (err.response?.data?.message) alert(err.response.data.message);
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        alert(err.response.data.message);
+      }
     }
   };
 
@@ -109,7 +120,7 @@ export default function CommissionPage() {
       });
       await fetchCommissions();
       await fetchAvailableCenters();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error deleting commission', err);
     }
   };
